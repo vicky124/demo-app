@@ -1,6 +1,6 @@
 # Deploying to AWS
 
-This guide deploys the app to a single **EC2 instance running Docker Compose** —
+This guide deploys the app to a single **EC2 instance running Docker Compose** 
 the same `docker-compose.yml` you already use locally (app + Redis together),
 just running on a public AWS host instead of your laptop. This is the
 recommended path for this project: it needs no AWS networking knowledge beyond
