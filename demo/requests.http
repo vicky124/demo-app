@@ -1,0 +1,64 @@
+### API Throttling Service — full demo walkthrough
+###
+### Covers the required 2 clients x 2 endpoints x 2 storage strategies matrix.
+### Openable directly with the VS Code "REST Client" extension, or copy each
+### block out as a curl command. Run the server first (see README.md §2/§3).
+###
+### client-a: /foo capacity=10 refill=1/s   | /bar limit=5 per 10s window
+### client-b: /foo capacity=3  refill=0.2/s | /bar limit=20 per 10s window
+
+@baseUrl = http://localhost:3000
+
+### === Auth failure cases ===
+
+### No Authorization header -> 401
+GET {{baseUrl}}/foo
+
+### Unknown client id -> 401
+GET {{baseUrl}}/foo
+Authorization: bearer nobody
+
+### Malformed scheme -> 401
+GET {{baseUrl}}/foo
+Authorization: token client-a
+
+### === client-a on /foo (Token Bucket, capacity 10) ===
+### Fire this block ~11 times quickly: expect 200 x10, then 429.
+
+GET {{baseUrl}}/foo
+Authorization: bearer client-a
+
+### === client-b on /foo (Token Bucket, capacity 3 — throttles much sooner) ===
+### Fire this block ~4 times quickly: expect 200 x3, then 429.
+
+GET {{baseUrl}}/foo
+Authorization: bearer client-b
+
+### === client-a on /bar (Sliding Window Counter, limit 5 per 10s) ===
+### Fire this block ~6 times quickly: expect 200 x5, then 429.
+
+GET {{baseUrl}}/bar
+Authorization: bearer client-a
+
+### === client-b on /bar (Sliding Window Counter, limit 20 per 10s) ===
+### Fire this block ~21 times quickly: expect 200 x20, then 429.
+
+GET {{baseUrl}}/bar
+Authorization: bearer client-b
+
+### === Cross-check: /foo and /bar are independent limits for the same client ===
+### After exhausting client-b's /foo above (429), /bar for client-b should still
+### return 200 here — proves the two endpoints don't share a counter.
+
+GET {{baseUrl}}/bar
+Authorization: bearer client-b
+
+### === Persistence check (STORAGE_DRIVER=redis only) ===
+### 1. Run the client-b /foo block above 3x to exhaust its bucket (429 on the 4th).
+### 2. Restart the app process (Ctrl-C, `npm start` again) WITHOUT restarting Redis.
+### 3. Re-run this request immediately: expect 429 again (state survived the
+###    app restart). Repeat the whole check with STORAGE_DRIVER=memory and the
+###    same request comes back 200 instead, since in-memory state was wiped.
+
+GET {{baseUrl}}/foo
+Authorization: bearer client-b

@@ -1,0 +1,10 @@
+{
+  "client-a": {
+    "foo": { "capacity": 10, "refillRatePerSec": 1 },
+    "bar": { "limit": 5, "windowSizeMs": 10000 }
+  },
+  "client-b": {
+    "foo": { "capacity": 3, "refillRatePerSec": 0.2 },
+    "bar": { "limit": 20, "windowSizeMs": 10000 }
+  }
+}
