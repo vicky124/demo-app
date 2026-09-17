@@ -1,0 +1,18 @@
+{
+  "files.associations": {
+    ".env.example": "dotenv",
+    ".env": "dotenv",
+    "*.http": "http"
+  },
+  "files.exclude": {
+    "dist": true,
+    "node_modules": true
+  },
+  "search.exclude": {
+    "dist/**": true,
+    "node_modules/**": true,
+    "coverage/**": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "jest.jestCommandLine": "npm test --"
+}
