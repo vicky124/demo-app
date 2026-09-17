@@ -63,11 +63,14 @@ ssh -i demo-app-key.pem ec2-user@<PUBLIC_IP>
 
 ---
 
-## 3. Install Docker, the Compose plugin, and git
+## 3. Install Docker, the Compose and Buildx plugins, and git
 
-Run these on the EC2 instance (Amazon Linux 2023). The minimal AMI doesn't
-ship `git` by default, so it's included here alongside Docker rather than
-failing later at the `git clone` in §4:
+Run these on the EC2 instance (Amazon Linux 2023). The minimal AMI's `docker`
+package gives you only the engine — not `git`, not the Compose CLI plugin, and
+not the Buildx CLI plugin that `docker compose build`/`--build` requires
+(without it you'll hit `compose build requires buildx 0.17.0 or later` even
+though Compose itself is installed and working). All three are installed here
+up front instead of failing one at a time at later steps:
 
 ```bash
 sudo dnf update -y
@@ -92,6 +95,18 @@ curl -SL https://github.com/docker/compose/releases/latest/download/docker-compo
   -o ~/.docker/cli-plugins/docker-compose
 chmod +x ~/.docker/cli-plugins/docker-compose
 docker compose version   # sanity check
+```
+
+Install the Buildx plugin (Compose's `build`/`--build` calls into this; its
+release filenames embed the version number, so the tag is looked up first
+rather than hardcoding a version that will eventually go stale):
+
+```bash
+BUILDX_VERSION=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | grep '"tag_name"' | cut -d '"' -f4)
+curl -SL "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64" \
+  -o ~/.docker/cli-plugins/docker-buildx
+chmod +x ~/.docker/cli-plugins/docker-buildx
+docker buildx version   # sanity check
 ```
 
 ---
