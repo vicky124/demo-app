@@ -342,7 +342,7 @@ The `Dockerfile` builds a production image; `docker-compose.yml` runs the app
 and Redis together, locally or on a server. **[DEPLOYMENT_AWS.md](./DEPLOYMENT_AWS.md)**
 has the full step-by-step guide for deploying this exact `docker-compose.yml`
 setup to an AWS EC2 instance, including the security group, Docker install,
-getting the (private) repo onto the box, verifying it's reachable, and
+cloning the repo onto the box, verifying it's reachable, and
 **setting up CI/CD** so pushes to `master` auto-deploy via GitHub Actions
 ([`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml)) — along with
 a shorter outline of the App Runner + ECR + ElastiCache alternative.

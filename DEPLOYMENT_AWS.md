@@ -23,11 +23,9 @@ services.
 
 - An AWS account with permission to create EC2 instances and security groups.
 - An SSH key pair (you'll create one in the console if you don't have one).
-- This repository pushed to GitHub (already done — `vicky124/demo-app`).
-- Since the repo is **private**, you'll need either a GitHub Personal Access
-  Token or an SSH deploy key to `git clone` it from the EC2 instance (§4 covers
-  this). If you'd rather skip that entirely, `scp` the project folder up
-  instead (also noted in §4).
+- This repository pushed to GitHub (already done — `vicky124/demo-app`, **public**,
+  so it can be `git clone`d from the EC2 instance with no GitHub authentication
+  at all — no PAT, no deploy key).
 
 ---
 
@@ -98,28 +96,13 @@ docker compose version   # sanity check
 
 ## 4. Get the code onto the instance
 
-**Option A — git clone with a Personal Access Token** (repo is private):
-
-1. On GitHub: **Settings → Developer settings → Personal access tokens →
-   Fine-grained tokens** → generate one scoped to read-only access on
-   `vicky124/demo-app`.
-2. On the EC2 instance:
-   ```bash
-   git clone https://<YOUR_TOKEN>@github.com/vicky124/demo-app.git
-   cd demo-app
-   ```
-   (The token is embedded in the URL only for this one clone command —
-   avoid putting it in `git remote -v` output you share with anyone.)
-
-**Option B — copy the folder up directly, no GitHub auth needed:**
-
-From your own machine (not the EC2 instance):
+The repo is public, so this is a plain clone — no GitHub authentication needed:
 
 ```bash
-scp -i demo-app-key.pem -r "D:/workspace/api-throttling-service" ec2-user@<PUBLIC_IP>:~/demo-app
+# on the EC2 instance
+git clone https://github.com/vicky124/demo-app.git
+cd demo-app
 ```
-
-Then `ssh` back in and `cd demo-app`.
 
 ---
 
@@ -165,7 +148,7 @@ curl -i http://<PUBLIC_IP>:3000/foo -H "Authorization: bearer client-b"
 
 ```bash
 # on the EC2 instance, inside ~/demo-app
-git pull                       # if you used Option A
+git pull
 docker compose up --build -d   # rebuilds only what changed, restarts containers
 ```
 
@@ -217,28 +200,15 @@ instance → **Security** tab → the security group → **Edit inbound rules** 
 either change the existing SSH rule's source to **Anywhere (0.0.0.0/0)**, or
 add a second SSH rule for it and leave "My IP" as well.
 
-### 9.1 Set up repo access for automated pulls
+### 9.1 Confirm the EC2 instance's repo remote
 
-The `deploy` job runs `git fetch`/`git reset --hard` **on the EC2 instance**,
-so the instance needs durable, non-interactive access to the private repo. If
-you used §4 Option B (`scp`, no git remote at all) or want to replace a PAT
-embedded in a URL (§4 Option A) with something that doesn't expire silently,
-set up a **deploy key** instead:
+The `deploy` job runs `git fetch`/`git reset --hard` **on the EC2 instance**.
+Since the repo is public, the plain HTTPS clone from §4 already has everything
+needed — no deploy key, no PAT, no extra setup:
 
 ```bash
-# on the EC2 instance
-ssh-keygen -t ed25519 -C "demo-app-ec2-deploy" -f ~/.ssh/id_ed25519 -N ""
-cat ~/.ssh/id_ed25519.pub
-```
-
-Copy that public key into **GitHub → your repo → Settings → Deploy keys → Add
-deploy key** (read-only is enough). Then point the repo's remote at SSH
-instead of HTTPS:
-
-```bash
-# on the EC2 instance, inside ~/demo-app (or git clone git@github.com:vicky124/demo-app.git ~/demo-app if you haven't cloned yet)
-git remote set-url origin git@github.com:vicky124/demo-app.git
-ssh -T git@github.com   # first-time host key confirmation; type "yes"
+# on the EC2 instance, inside ~/demo-app
+git remote -v   # confirm it's the HTTPS URL from §4
 git fetch origin master
 ```
 
@@ -251,7 +221,7 @@ add:
 |---|---|
 | `EC2_HOST` | the instance's public IPv4 address |
 | `EC2_USER` | `ec2-user` |
-| `EC2_SSH_KEY` | the full contents of `demo-app-key.pem` (the key you use to SSH in — the same one from §1/§2, *not* the deploy key from §9.1, which is a separate key for GitHub→EC2 repo access) |
+| `EC2_SSH_KEY` | the full contents of `demo-app-key.pem` (the key you use to SSH in — the same one from §1/§2) |
 
 ### 9.3 Push and watch it run
 
