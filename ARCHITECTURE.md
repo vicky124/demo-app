@@ -2,7 +2,6 @@
 
 **Author:** Vicky Jadhav
 **Status:** Draft for implementation
-**Estimated effort:** ~4 hours (take-home task)
 
 ---
 
