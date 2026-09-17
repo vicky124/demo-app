@@ -7,10 +7,15 @@ recommended path for this project: it needs no AWS networking knowledge beyond
 one security group, stays inside the AWS free tier, and gives you a public URL
 in about 15 minutes.
 
-An alternative, more "cloud-native" path (AWS App Runner + ECR + ElastiCache)
-is sketched at the end for reference, but involves meaningfully more AWS
-plumbing (VPC connectors for private ElastiCache access) for the same result —
-not recommended unless you specifically want to practice those services.
+§9 covers setting up **CI/CD** on top of this (GitHub Actions runs the test
+suite on every push/PR, then auto-deploys to this same EC2 instance on a
+successful push to `master`).
+
+An alternative, more "cloud-native" deployment path (AWS App Runner + ECR +
+ElastiCache) is sketched at the end for reference, but involves meaningfully
+more AWS plumbing (VPC connectors for private ElastiCache access) for the same
+result — not recommended unless you specifically want to practice those
+services.
 
 ---
 
@@ -176,6 +181,132 @@ docker compose up --build -d   # rebuilds only what changed, restarts containers
   running (and, once your free-tier window ends, costing money) indefinitely.
 - Terminating deletes the instance and its data — that's fine here since
   nothing on it needs to be kept once the reviewer has seen it working.
+
+---
+
+## 9. CI/CD pipeline (GitHub Actions → EC2)
+
+This automates §7 ("Updating after a code change") so every push to `master`
+that passes tests is deployed automatically, with no manual SSH step. The
+workflow file is already in the repo at
+[`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml) and has two jobs:
+
+- **`test`** — runs on every push and pull request against `master`: `npm ci`,
+  `npm run build`, `npm test`. This is the CI gate; a PR with failing tests
+  shows a red X and nothing deploys.
+- **`deploy`** — runs only on a push to `master`, only after `test` passes.
+  SSHes into the EC2 instance and runs `git fetch && git reset --hard
+  origin/master && docker compose up --build -d`.
+
+### A security trade-off you need to decide on first
+
+GitHub-hosted Actions runners don't have a fixed IP address — they come from a
+large, changing range. The security group rule from §1 (`SSH: 22, source = My
+IP`) was written for *your* SSH access and will silently block the `deploy`
+job, since it isn't coming from your IP. You have two options:
+
+- **A. Open port 22 to the internet** (simplest, used below) — key-based auth
+  still protects it (no password login is configured), and this is a demo
+  instance you'll terminate afterward per §8, but it is a real trade-off: any
+  IP on the internet can attempt to connect, not just GitHub's.
+- **B. Use AWS Systems Manager (SSM) instead of SSH** — no inbound port needed
+  at all. More secure, more setup. Outlined at the end of this section.
+
+If you're fine with (A), update the security group: EC2 console → your
+instance → **Security** tab → the security group → **Edit inbound rules** →
+either change the existing SSH rule's source to **Anywhere (0.0.0.0/0)**, or
+add a second SSH rule for it and leave "My IP" as well.
+
+### 9.1 Set up repo access for automated pulls
+
+The `deploy` job runs `git fetch`/`git reset --hard` **on the EC2 instance**,
+so the instance needs durable, non-interactive access to the private repo. If
+you used §4 Option B (`scp`, no git remote at all) or want to replace a PAT
+embedded in a URL (§4 Option A) with something that doesn't expire silently,
+set up a **deploy key** instead:
+
+```bash
+# on the EC2 instance
+ssh-keygen -t ed25519 -C "demo-app-ec2-deploy" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy that public key into **GitHub → your repo → Settings → Deploy keys → Add
+deploy key** (read-only is enough). Then point the repo's remote at SSH
+instead of HTTPS:
+
+```bash
+# on the EC2 instance, inside ~/demo-app (or git clone git@github.com:vicky124/demo-app.git ~/demo-app if you haven't cloned yet)
+git remote set-url origin git@github.com:vicky124/demo-app.git
+ssh -T git@github.com   # first-time host key confirmation; type "yes"
+git fetch origin master
+```
+
+### 9.2 Add GitHub Actions secrets
+
+**Repo → Settings → Secrets and variables → Actions → New repository secret**,
+add:
+
+| Secret | Value |
+|---|---|
+| `EC2_HOST` | the instance's public IPv4 address |
+| `EC2_USER` | `ec2-user` |
+| `EC2_SSH_KEY` | the full contents of `demo-app-key.pem` (the key you use to SSH in — the same one from §1/§2, *not* the deploy key from §9.1, which is a separate key for GitHub→EC2 repo access) |
+
+### 9.3 Push and watch it run
+
+```bash
+git add .
+git commit -m "trigger pipeline"
+git push origin master
+```
+
+**GitHub → your repo → Actions tab** shows the workflow running: `test` first,
+then `deploy` once `test` is green. On success, verify the same way as §6:
+
+```bash
+curl -i http://<PUBLIC_IP>:3000/foo -H "Authorization: bearer client-a"
+```
+
+### 9.4 Rolling back a bad deploy
+
+Automated deploys mean a broken `master` gets shipped automatically too. To
+roll back:
+
+```bash
+git revert <bad-commit-sha>
+git push origin master   # ships a new commit that undoes it, redeploys automatically
+```
+
+or, for an immediate manual fix without waiting on CI, SSH in directly and
+check out the last known-good commit, then `docker compose up --build -d`.
+
+### 9.5 More secure alternative: deploy via AWS Systems Manager, no open SSH port
+
+Instead of `appleboy/ssh-action`, GitHub Actions can trigger a command on the
+instance through **SSM Run Command**, which uses IAM credentials rather than
+an open network port:
+
+1. Attach an IAM role with the `AmazonSSMManagedInstanceCore` policy to the
+   EC2 instance (EC2 console → instance → **Actions → Security → Modify IAM
+   role**). Amazon Linux 2023 already runs the SSM agent, so no extra install
+   is needed on the box.
+2. Create an IAM user (or, better, an OIDC-federated role so no long-lived
+   keys are needed) with permission to call `ssm:SendCommand` and
+   `ssm:GetCommandInvocation`, scoped to that instance's ARN.
+3. Store the credentials as GitHub secrets and use
+   `aws-actions/configure-aws-credentials` in the workflow, then call:
+   ```bash
+   aws ssm send-command \
+     --instance-ids <INSTANCE_ID> \
+     --document-name "AWS-RunShellScript" \
+     --parameters 'commands=["cd /home/ec2-user/demo-app","git fetch origin master","git reset --hard origin/master","docker compose up --build -d"]'
+   ```
+4. Remove the port-22 rule from the security group entirely — SSM doesn't
+   need it, closing the exposure that option (A) above accepted.
+
+This trades a security-group shortcut for IAM setup; worth it if this were a
+longer-lived deployment rather than a task demo.
 
 ---
 
