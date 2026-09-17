@@ -338,16 +338,15 @@ The codebase follows SOLID:
 
 ## 12. Deployment (stretch goal)
 
-The `Dockerfile` builds a production image; `docker-compose.yml` is for local
-development. To deploy to a cloud provider (Render, Railway, Fly.io, etc.):
+The `Dockerfile` builds a production image; `docker-compose.yml` runs the app
+and Redis together, locally or on a server. **[DEPLOYMENT_AWS.md](./DEPLOYMENT_AWS.md)**
+has the full step-by-step guide for deploying this exact `docker-compose.yml`
+setup to an AWS EC2 instance, including the security group, Docker install,
+getting the (private) repo onto the box, and verifying it's reachable —
+along with a shorter outline of the App Runner + ECR + ElastiCache alternative.
 
-1. Push this repository (already done if you're reading it on GitHub).
-2. Create a Node/Docker web service pointed at this repo, and a managed Redis
-   add-on.
-3. Set env vars: `STORAGE_DRIVER=redis`, `REDIS_URL=<provider-supplied URL>`,
-   `PORT=<provider-supplied port>`.
-4. The reviewer can then run the same `curl` commands from §6 against the
-   public URL instead of `localhost`.
+Once deployed, the reviewer runs the same `curl`/PowerShell/Postman requests
+from §7 against the public IP instead of `localhost`.
 
 See [ARCHITECTURE.md §14](./ARCHITECTURE.md#14-deployment-stretch-goal) for the
 deployment diagram.
