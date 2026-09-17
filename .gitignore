@@ -3,3 +3,11 @@ dist/
 .env
 *.log
 coverage/
+
+# Never commit private key material.
+*.pem
+*.key
+
+# A stray nested clone of this same repo (e.g. from testing `git clone`
+# locally instead of on the EC2 instance) — not a submodule, just clutter.
+/demo-app/

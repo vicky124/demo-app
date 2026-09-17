@@ -63,13 +63,15 @@ ssh -i demo-app-key.pem ec2-user@<PUBLIC_IP>
 
 ---
 
-## 3. Install Docker and the Compose plugin
+## 3. Install Docker, the Compose plugin, and git
 
-Run these on the EC2 instance (Amazon Linux 2023):
+Run these on the EC2 instance (Amazon Linux 2023). The minimal AMI doesn't
+ship `git` by default, so it's included here alongside Docker rather than
+failing later at the `git clone` in §4:
 
 ```bash
 sudo dnf update -y
-sudo dnf install -y docker
+sudo dnf install -y docker git
 sudo systemctl enable --now docker
 sudo usermod -aG docker ec2-user
 ```
