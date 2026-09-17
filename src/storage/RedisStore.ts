@@ -47,6 +47,14 @@ export class RedisStore implements RateLimitStore {
   async atomicUpdate<R>(key: string, updateFn: UpdateFn<R>): Promise<R> {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       const conn = this.client.duplicate();
+      // A duplicated connection is a fresh EventEmitter with no 'error'
+      // listener of its own; without one, a connection failure on this
+      // specific attempt prints ioredis's own "Unhandled error event" spam
+      // in addition to rejecting the command promise below. The rejection is
+      // what actually drives the fail-closed 503 behavior (via the caller's
+      // try/catch in middleware/rateLimit.ts) — this listener only silences
+      // the duplicate console noise.
+      conn.on("error", () => {});
       try {
         await conn.watch(key);
 
