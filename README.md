@@ -141,9 +141,8 @@ config is loaded once at startup, see [ARCHITECTURE.md §15](./ARCHITECTURE.md#1
 ## 6. Demo script — all combinations
 
 The task calls for demonstrating **2 clients × 2 endpoints × 2 storage strategies**.
-[`demo/requests.http`](./demo/requests.http) has the full walkthrough (openable
-directly in VS Code's REST Client extension, or copy the `curl` commands out).
-Summary:
+[`demo/requests.http`](./demo/requests.http) documents every request in that matrix;
+run them with whichever tool from §7 you prefer. Summary, in bash/curl form:
 
 ```bash
 # --- storage: memory (default) ---
@@ -167,7 +166,66 @@ docker compose up --build
 
 ---
 
-## 7. Testing
+## 7. Making the requests — client options
+
+No editor extension is required to exercise the API. Pick whichever of these is
+already on your machine; they're all equivalent for this task.
+
+### curl (Git Bash, WSL, macOS/Linux, or `curl.exe` on Windows)
+
+Windows 10/11 ships a real `curl.exe` in `System32`. On native PowerShell/cmd,
+call it as `curl.exe` explicitly, since PowerShell aliases the bare word `curl`
+to `Invoke-WebRequest` (different flags/output):
+
+```bash
+curl -i http://localhost:3000/foo -H "Authorization: bearer client-a"
+```
+
+### PowerShell — no curl needed
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:3000/foo" -Headers @{ Authorization = "bearer client-a" }
+```
+
+`Invoke-RestMethod` parses the JSON body for you. To see the status code as well
+(it throws instead of returning on 4xx/5xx, hence the `try`/`catch`):
+
+```powershell
+1..4 | ForEach-Object {
+  try { (Invoke-WebRequest -Uri "http://localhost:3000/foo" -Headers @{ Authorization = "bearer client-b" }).StatusCode }
+  catch { $_.Exception.Response.StatusCode.value__ }
+}
+```
+
+### Postman / Insomnia (GUI)
+
+Create a `GET` request to `http://localhost:3000/foo`, add a header
+`Authorization: bearer client-a`, click Send. Good for clicking through the
+matrix repeatedly and watching status codes without typing commands.
+
+### A small Node.js script
+
+Node is already a project dependency, so this needs no extra install:
+
+```js
+// scratch.js
+const clientId = process.argv[2] ?? "client-a";
+const path = process.argv[3] ?? "/foo";
+fetch(`http://localhost:3000${path}`, { headers: { Authorization: `bearer ${clientId}` } })
+  .then(async (res) => console.log(res.status, await res.json()));
+```
+
+```bash
+node scratch.js client-b /foo
+```
+
+**Not viable:** a plain browser address bar. GETs work, but browsers don't let
+you attach a custom `Authorization` header from the URL bar, so every request
+would come back `401`.
+
+---
+
+## 8. Testing
 
 ```bash
 npm test
@@ -186,11 +244,11 @@ npm test
 `ioredis-mock` implements the real Redis wire protocol semantics for `GET`/`SET`/`WATCH`/`MULTI`/`EXEC`
 in-memory, so `RedisStore` is exercised without needing a live Redis server in CI.
 It is not a stub — it's what caught a real concurrency bug during development (see
-§8, "Implementation notes").
+§9, "Implementation notes").
 
 ---
 
-## 8. Implementation notes / deviations from the initial design
+## 9. Implementation notes / deviations from the initial design
 
 While implementing against [ARCHITECTURE.md](./ARCHITECTURE.md), one detail changed
 based on what testing surfaced, worth calling out explicitly rather than leaving silent:
@@ -216,7 +274,7 @@ based on what testing surfaced, worth calling out explicitly rather than leaving
 
 ---
 
-## 9. Project structure
+## 10. Project structure
 
 ```
 src/
@@ -255,7 +313,7 @@ ARCHITECTURE.md                       # full design document, diagrams, requirem
 
 ---
 
-## 10. Design principles
+## 11. Design principles
 
 The codebase follows SOLID:
 
@@ -267,7 +325,7 @@ The codebase follows SOLID:
   existing code changes.
 - **Liskov Substitution** — `MemoryStore` and `RedisStore` are drop-in
   replacements for each other everywhere `RateLimitStore` is used (proven by
-  running the identical test suite against both, §7); same for the two
+  running the identical test suite against both, §8); same for the two
   `RateLimiter` implementations.
 - **Interface Segregation** — `RateLimitStore` exposes only `get`/`atomicUpdate`;
   `RateLimiter` exposes only `check`. Neither interface forces a consumer to
@@ -278,7 +336,7 @@ The codebase follows SOLID:
 
 ---
 
-## 11. Deployment (stretch goal)
+## 12. Deployment (stretch goal)
 
 The `Dockerfile` builds a production image; `docker-compose.yml` is for local
 development. To deploy to a cloud provider (Render, Railway, Fly.io, etc.):

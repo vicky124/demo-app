@@ -1,8 +1,11 @@
 ### API Throttling Service — full demo walkthrough
 ###
 ### Covers the required 2 clients x 2 endpoints x 2 storage strategies matrix.
-### Openable directly with the VS Code "REST Client" extension, or copy each
-### block out as a curl command. Run the server first (see README.md §2/§3).
+### This file documents each request; run them with whatever HTTP client you
+### have on hand — curl, PowerShell's Invoke-RestMethod, Postman/Insomnia, or
+### a small script (see README.md §7 "Making the requests" for equivalents of
+### every block below in curl/PowerShell/Node form). Run the server first
+### (see README.md §2/§3).
 ###
 ### client-a: /foo capacity=10 refill=1/s   | /bar limit=5 per 10s window
 ### client-b: /foo capacity=3  refill=0.2/s | /bar limit=20 per 10s window

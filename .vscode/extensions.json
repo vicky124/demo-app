@@ -1,8 +1,0 @@
-{
-  "recommendations": [
-    "humao.rest-client",
-    "mikestead.dotenv",
-    "orta.vscode-jest",
-    "ms-azuretools.vscode-docker"
-  ]
-}
