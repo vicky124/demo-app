@@ -1,4 +1,4 @@
-# demo-app — API Throttling Service
+# Rate Limiter — API Throttling Service
 
 A small HTTP API demonstrating **API throttling (rate limiting)**. It exposes two
 endpoints, each protected by a **different, hand-rolled rate-limiting algorithm**,
