@@ -14,7 +14,7 @@ successful push to `master`).
 An alternative, more "cloud-native" deployment path (AWS App Runner + ECR +
 ElastiCache) is sketched at the end for reference, but involves meaningfully
 more AWS plumbing (VPC connectors for private ElastiCache access) for the same
-result — not recommended unless you specifically want to practice those
+result - not recommended unless you specifically want to practice those
 services.
 
 ---
@@ -23,9 +23,9 @@ services.
 
 - An AWS account with permission to create EC2 instances and security groups.
 - An SSH key pair (you'll create one in the console if you don't have one).
-- This repository pushed to GitHub (already done — `vicky124/demo-app`, **public**,
+- This repository pushed to GitHub (already done - `vicky124/demo-app`, **public**,
   so it can be `git clone`d from the EC2 instance with no GitHub authentication
-  at all — no PAT, no deploy key).
+  at all - no PAT, no deploy key).
 
 ---
 
@@ -34,9 +34,9 @@ services.
 1. AWS Console → **EC2** → **Launch instance**.
 2. **Name**: `demo-app`.
 3. **AMI**: Amazon Linux 2023 (free tier eligible).
-4. **Instance type**: `t3.micro` (or `t2.micro` — both free-tier eligible).
+4. **Instance type**: `t3.micro` (or `t2.micro` - both free-tier eligible).
 5. **Key pair**: create a new one (e.g. `demo-app-key`), download the `.pem`
-   file, keep it safe — you can't re-download it later.
+   file, keep it safe - you can't re-download it later.
 6. **Network settings** → click **Edit** and configure the security group
    (or create a new one) with these inbound rules:
 
@@ -58,15 +58,15 @@ chmod 400 demo-app-key.pem
 ssh -i demo-app-key.pem ec2-user@<PUBLIC_IP>
 ```
 
-(On Windows, use Git Bash for this — the same shell you've been using for
-`curl` — or PuTTY if you prefer.)
+(On Windows, use Git Bash for this - the same shell you've been using for
+`curl` - or PuTTY if you prefer.)
 
 ---
 
 ## 3. Install Docker, the Compose and Buildx plugins, and git
 
 Run these on the EC2 instance (Amazon Linux 2023). The minimal AMI's `docker`
-package gives you only the engine — not `git`, not the Compose CLI plugin, and
+package gives you only the engine - not `git`, not the Compose CLI plugin, and
 not the Buildx CLI plugin that `docker compose build`/`--build` requires
 (without it you'll hit `compose build requires buildx 0.17.0 or later` even
 though Compose itself is installed and working). All three are installed here
@@ -113,7 +113,7 @@ docker buildx version   # sanity check
 
 ## 4. Get the code onto the instance
 
-The repo is public, so this is a plain clone — no GitHub authentication needed:
+The repo is public, so this is a plain clone - no GitHub authentication needed:
 
 ```bash
 # on the EC2 instance
@@ -155,7 +155,7 @@ against `http://<PUBLIC_IP>:3000` instead of `localhost:3000`. Because
 ```bash
 # on the EC2 instance
 docker compose restart app   # restarts only the app container, Redis keeps running
-# immediately from your machine — counters from before the restart are still there
+# immediately from your machine - counters from before the restart are still there
 curl -i http://<PUBLIC_IP>:3000/foo -H "Authorization: bearer client-b"
 ```
 
@@ -179,7 +179,7 @@ docker compose up --build -d   # rebuilds only what changed, restarts containers
 - **When you're done demoing it, stop or terminate the instance** (EC2 console
   → select instance → **Instance state → Terminate**) so it doesn't keep
   running (and, once your free-tier window ends, costing money) indefinitely.
-- Terminating deletes the instance and its data — that's fine here since
+- Terminating deletes the instance and its data - that's fine here since
   nothing on it needs to be kept once the reviewer has seen it working.
 
 ---
@@ -191,25 +191,25 @@ that passes tests is deployed automatically, with no manual SSH step. The
 workflow file is already in the repo at
 [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml) and has two jobs:
 
-- **`test`** — runs on every push and pull request against `master`: `npm ci`,
+- **`test`** - runs on every push and pull request against `master`: `npm ci`,
   `npm run build`, `npm test`. This is the CI gate; a PR with failing tests
   shows a red X and nothing deploys.
-- **`deploy`** — runs only on a push to `master`, only after `test` passes.
+- **`deploy`** - runs only on a push to `master`, only after `test` passes.
   SSHes into the EC2 instance and runs `git fetch && git reset --hard
   origin/master && docker compose up --build -d`.
 
 ### A security trade-off you need to decide on first
 
-GitHub-hosted Actions runners don't have a fixed IP address — they come from a
+GitHub-hosted Actions runners don't have a fixed IP address - they come from a
 large, changing range. The security group rule from §1 (`SSH: 22, source = My
 IP`) was written for *your* SSH access and will silently block the `deploy`
 job, since it isn't coming from your IP. You have two options:
 
-- **A. Open port 22 to the internet** (simplest, used below) — key-based auth
+- **A. Open port 22 to the internet** (simplest, used below) - key-based auth
   still protects it (no password login is configured), and this is a demo
   instance you'll terminate afterward per §8, but it is a real trade-off: any
   IP on the internet can attempt to connect, not just GitHub's.
-- **B. Use AWS Systems Manager (SSM) instead of SSH** — no inbound port needed
+- **B. Use AWS Systems Manager (SSM) instead of SSH** - no inbound port needed
   at all. More secure, more setup. Outlined at the end of this section.
 
 If you're fine with (A), update the security group: EC2 console → your
@@ -221,7 +221,7 @@ add a second SSH rule for it and leave "My IP" as well.
 
 The `deploy` job runs `git fetch`/`git reset --hard` **on the EC2 instance**.
 Since the repo is public, the plain HTTPS clone from §4 already has everything
-needed — no deploy key, no PAT, no extra setup:
+needed - no deploy key, no PAT, no extra setup:
 
 ```bash
 # on the EC2 instance, inside ~/demo-app
@@ -238,7 +238,7 @@ add:
 |---|---|
 | `EC2_HOST` | the instance's public IPv4 address |
 | `EC2_USER` | `ec2-user` |
-| `EC2_SSH_KEY` | the full contents of `demo-app-key.pem` (the key you use to SSH in — the same one from §1/§2) |
+| `EC2_SSH_KEY` | the full contents of `demo-app-key.pem` (the key you use to SSH in - the same one from §1/§2) |
 
 ### 9.3 Push and watch it run
 
@@ -289,7 +289,7 @@ an open network port:
      --document-name "AWS-RunShellScript" \
      --parameters 'commands=["cd /home/ec2-user/demo-app","git fetch origin master","git reset --hard origin/master","docker compose up --build -d"]'
    ```
-4. Remove the port-22 rule from the security group entirely — SSM doesn't
+4. Remove the port-22 rule from the security group entirely - SSM doesn't
    need it, closing the exposure that option (A) above accepted.
 
 This trades a security-group shortcut for IAM setup; worth it if this were a
@@ -299,7 +299,7 @@ longer-lived deployment rather than a task demo.
 
 ## Alternative: App Runner + ECR + ElastiCache (more AWS-native, more setup)
 
-For reference only — not needed for this task, but useful if you want a
+For reference only - not needed for this task, but useful if you want a
 managed/serverless deployment instead of a server you maintain:
 
 1. `docker build -t demo-app .` locally, then push the image to a private
@@ -308,12 +308,12 @@ managed/serverless deployment instead of a server you maintain:
    `STORAGE_DRIVER=redis` and `REDIS_URL` as environment variables.
 3. Create an **ElastiCache for Redis** cluster (`cache.t3.micro`). ElastiCache
    has no public endpoint by design, so App Runner needs a **VPC connector**
-   configured to reach the subnet ElastiCache lives in — this is the part
+   configured to reach the subnet ElastiCache lives in - this is the part
    that adds real complexity compared to the EC2 path above (subnets, route
    tables, security groups between App Runner's VPC connector and
    ElastiCache's security group).
 4. App Runner gives you an HTTPS URL automatically (no security group/port
-   config needed on your end), auto-scales, and you never SSH into anything —
+   config needed on your end), auto-scales, and you never SSH into anything -
    at the cost of the VPC/ElastiCache setup in step 3.
 
 If you want to pursue this route in detail, say so and I'll write it out as
