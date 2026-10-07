@@ -1,4 +1,4 @@
-# Rate Limiter — API Throttling Service
+# Rate Limiter - API Throttling Service
 
 A small HTTP API demonstrating **API throttling (rate limiting)**. It exposes two
 endpoints, each protected by a **different, hand-rolled rate-limiting algorithm**,
@@ -6,7 +6,7 @@ enforced **per client**, with a choice of **two interchangeable storage backends
 for the rate-limit counters.
 
 Full design rationale, diagrams, and the requirements this implementation satisfies
-are in **[ARCHITECTURE.md](./ARCHITECTURE.md)** — read that for the "why"; this
+are in **[ARCHITECTURE.md](./ARCHITECTURE.md)** - read that for the "why"; this
 file covers the "how to run it".
 
 | Endpoint | Algorithm |
@@ -14,7 +14,7 @@ file covers the "how to run it".
 | `GET /foo` | Token Bucket (burst-tolerant) |
 | `GET /bar` | Sliding Window Counter (smooths fixed-window edge bursts) |
 
-Both rate-limiting algorithms are implemented from scratch (`src/limiters/`) —
+Both rate-limiting algorithms are implemented from scratch (`src/limiters/`) -
 no `express-rate-limit` or similar library is used for the throttling logic itself.
 
 ---
@@ -23,7 +23,7 @@ no `express-rate-limit` or similar library is used for the throttling logic itse
 
 - Node.js **18+** (developed and tested on Node 20/24)
 - npm (ships with Node)
-- Docker + Docker Compose — **only** needed to run the Redis-backed storage
+- Docker + Docker Compose - **only** needed to run the Redis-backed storage
   strategy locally or to run the whole stack in containers. Not required to run
   the app itself with the in-memory storage strategy.
 
@@ -57,7 +57,7 @@ npm run dev
 
 ## 3. Running with Redis (persistent storage strategy)
 
-### Option A — Docker Compose (app + Redis together)
+### Option A - Docker Compose (app + Redis together)
 
 ```bash
 docker compose up --build
@@ -67,7 +67,7 @@ This builds the app image, starts a Redis container, and wires the app to it via
 `STORAGE_DRIVER=redis` / `REDIS_URL=redis://redis:6379` (see `docker-compose.yml`).
 The app is reachable at `http://localhost:3000`, same as the in-memory quick start.
 
-### Option B — Local Redis, app run directly
+### Option B - Local Redis, app run directly
 
 ```bash
 docker run -p 6379:6379 redis:7-alpine
@@ -79,7 +79,7 @@ STORAGE_DRIVER=redis REDIS_URL=redis://localhost:6379 npm start
 
 ### Proving persistence
 
-Restart the **app** process (not Redis) between requests — under `STORAGE_DRIVER=redis`
+Restart the **app** process (not Redis) between requests - under `STORAGE_DRIVER=redis`
 the counters survive because they live in Redis, not in the app's memory:
 
 ```bash
@@ -87,17 +87,17 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/foo -H "Authoriza
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/foo -H "Authorization: bearer client-b" # 200
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/foo -H "Authorization: bearer client-b" # 200 (capacity 3 exhausted)
 # ctrl-C the app, npm start it again, then immediately:
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/foo -H "Authorization: bearer client-b" # 429 — state survived the restart
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/foo -H "Authorization: bearer client-b" # 429 - state survived the restart
 ```
 
 Repeat the same sequence with `STORAGE_DRIVER=memory` and the last request comes
-back `200` instead — the in-memory counters were wiped by the restart, by design.
+back `200` instead - the in-memory counters were wiped by the restart, by design.
 
 ---
 
 ## 4. API
 
-### `GET /foo` — Token Bucket
+### `GET /foo` - Token Bucket
 
 | Response | When |
 |---|---|
@@ -106,7 +106,7 @@ back `200` instead — the in-memory counters were wiped by the restart, by desi
 | `401 { "error": "unauthorized" }` | Missing/malformed `Authorization` header, or unknown client |
 | `503 { "error": "rate limiter unavailable" }` | `STORAGE_DRIVER=redis` and Redis is unreachable |
 
-### `GET /bar` — Sliding Window Counter
+### `GET /bar` - Sliding Window Counter
 
 Same response contract as `/foo`.
 
@@ -133,12 +133,12 @@ with deliberately different limits so the two algorithms' behavior is easy to te
 | `client-a` | capacity **10**, refills 1 token/sec | limit **5** requests / 10s window |
 | `client-b` | capacity **3**, refills 0.2 tokens/sec | limit **20** requests / 10s window |
 
-Add a client or change a limit by editing `clients.json` (requires an app restart —
+Add a client or change a limit by editing `clients.json` (requires an app restart -
 config is loaded once at startup, see [ARCHITECTURE.md §15](./ARCHITECTURE.md#15-assumptions)).
 
 ---
 
-## 6. Demo script — all combinations
+## 6. Demo script - all combinations
 
 The task calls for demonstrating **2 clients × 2 endpoints × 2 storage strategies**.
 [`demo/requests.http`](./demo/requests.http) documents every request in that matrix;
@@ -148,7 +148,7 @@ run them with whichever tool from §7 you prefer. Summary, in bash/curl form:
 # --- storage: memory (default) ---
 npm start
 
-# client-a burst on /foo (capacity 10) — first 10 succeed, 11th throttles
+# client-a burst on /foo (capacity 10) - first 10 succeed, 11th throttles
 for i in $(seq 1 11); do curl -s -o /dev/null -w "%{http_code} " http://localhost:3000/foo -H "Authorization: bearer client-a"; done; echo
 
 # client-b's much smaller /foo burst (capacity 3) throttles almost immediately
@@ -160,13 +160,13 @@ for i in $(seq 1 6); do curl -s -o /dev/null -w "%{http_code} " http://localhost
 
 # --- storage: redis ---
 docker compose up --build
-# repeat the same four curl loops against the same URLs — identical HTTP behavior,
+# repeat the same four curl loops against the same URLs - identical HTTP behavior,
 # now backed by Redis and durable across app restarts (see §3).
 ```
 
 ---
 
-## 7. Making the requests — client options
+## 7. Making the requests - client options
 
 No editor extension is required to exercise the API. Pick whichever of these is
 already on your machine; they're all equivalent for this task.
@@ -181,7 +181,7 @@ to `Invoke-WebRequest` (different flags/output):
 curl -i http://localhost:3000/foo -H "Authorization: bearer client-a"
 ```
 
-### PowerShell — no curl needed
+### PowerShell - no curl needed
 
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:3000/foo" -Headers @{ Authorization = "bearer client-a" }
@@ -239,11 +239,11 @@ npm test
 | `test/slidingWindow.unit.test.ts` | Sliding Window Counter: limit enforcement, boundary smoothing vs. a naive fixed window, full reset once clear of the previous window, per-client isolation, concurrency cap |
 | `test/redisStore.unit.test.ts` | `RedisStore`'s atomic-update contract in isolation: round-trip, TTL expiry, and the same concurrency-cap guarantee against `ioredis-mock` |
 | `test/endpoints.memory.integration.test.ts` | Full HTTP contract (`GET /foo`/`/bar`, auth, 200/401/429) against a real `MemoryStore` via Supertest |
-| `test/endpoints.redis.integration.test.ts` | The **identical** HTTP contract test suite (`test/helpers/endpointContract.ts`) run again against `RedisStore` backed by `ioredis-mock` — proving both storage strategies satisfy the same behavior |
+| `test/endpoints.redis.integration.test.ts` | The **identical** HTTP contract test suite (`test/helpers/endpointContract.ts`) run again against `RedisStore` backed by `ioredis-mock` - proving both storage strategies satisfy the same behavior |
 
 `ioredis-mock` implements the real Redis wire protocol semantics for `GET`/`SET`/`WATCH`/`MULTI`/`EXEC`
 in-memory, so `RedisStore` is exercised without needing a live Redis server in CI.
-It is not a stub — it's what caught a real concurrency bug during development (see
+It is not a stub - it's what caught a real concurrency bug during development (see
 §9, "Implementation notes").
 
 ---
@@ -257,16 +257,16 @@ based on what testing surfaced, worth calling out explicitly rather than leaving
   duplicated connection per attempt, not a single shared connection.**
   The original plan executed the update via a shared client connection. Under
   a concurrency test (many simultaneous requests for one client), this let
-  15 concurrent requests all succeed against a capacity of 5 — because Redis's
+  15 concurrent requests all succeed against a capacity of 5 - because Redis's
   `WATCH`/`MULTI`/`EXEC` state is scoped to a *connection*, not to a logical
   transaction, and concurrent callers sharing one connection stomp on each
-  other's watched-key state. The fix — verified by first reproducing the bug,
-  then confirming the fix — is for each `atomicUpdate` attempt to run on its
+  other's watched-key state. The fix - verified by first reproducing the bug,
+  then confirming the fix - is for each `atomicUpdate` attempt to run on its
   own connection via `client.duplicate()`, released when the attempt completes,
   with jittered retry backoff under contention. See the doc comment in
   [`src/storage/RedisStore.ts`](./src/storage/RedisStore.ts) for the full
   explanation. This keeps the store fully generic (the exact same `updateFn`
-  runs against both `MemoryStore` and `RedisStore` — no per-algorithm Lua
+  runs against both `MemoryStore` and `RedisStore` - no per-algorithm Lua
   script duplication needed) at the cost of a connection-setup per attempt,
   which is an acceptable tradeoff at this demo's scale; a production
   deployment under heavy load would use a small pool of dedicated transaction
@@ -317,20 +317,20 @@ ARCHITECTURE.md                       # full design document, diagrams, requirem
 
 The codebase follows SOLID:
 
-- **Single Responsibility** — auth parsing, rate-limit decisioning, storage, and
+- **Single Responsibility** - auth parsing, rate-limit decisioning, storage, and
   route wiring are each their own module; none of them know about the others'
   internals.
-- **Open/Closed** — adding a third algorithm or a third storage backend means
+- **Open/Closed** - adding a third algorithm or a third storage backend means
   adding a new class that implements `RateLimiter` or `RateLimitStore`; no
   existing code changes.
-- **Liskov Substitution** — `MemoryStore` and `RedisStore` are drop-in
+- **Liskov Substitution** - `MemoryStore` and `RedisStore` are drop-in
   replacements for each other everywhere `RateLimitStore` is used (proven by
   running the identical test suite against both, §8); same for the two
   `RateLimiter` implementations.
-- **Interface Segregation** — `RateLimitStore` exposes only `get`/`atomicUpdate`;
+- **Interface Segregation** - `RateLimitStore` exposes only `get`/`atomicUpdate`;
   `RateLimiter` exposes only `check`. Neither interface forces a consumer to
   depend on methods it doesn't use.
-- **Dependency Inversion** — limiters and route handlers depend on the
+- **Dependency Inversion** - limiters and route handlers depend on the
   `RateLimiter`/`RateLimitStore` abstractions, injected via constructor/factory
   (`src/app.ts`, `src/storage/index.ts`), never on a concrete class directly.
 
@@ -344,7 +344,7 @@ has the full step-by-step guide for deploying this exact `docker-compose.yml`
 setup to an AWS EC2 instance, including the security group, Docker install,
 cloning the repo onto the box, verifying it's reachable, and
 **setting up CI/CD** so pushes to `master` auto-deploy via GitHub Actions
-([`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml)) — along with
+([`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml)) - along with
 a shorter outline of the App Runner + ECR + ElastiCache alternative.
 
 Once deployed, the reviewer runs the same `curl`/PowerShell/Postman requests
